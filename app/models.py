@@ -121,6 +121,9 @@ class User(db.Model, ModelMixin, UserMixin):
 
     profile_picture = db.relationship(File)
 
+    # During trial user has the same features as premium
+    trial_until = db.Column(ArrowType, default=arrow.utcnow, nullable=True)
+
     @classmethod
     def create(cls, email, name, password=None, **kwargs):
         user: User = super(User, cls).create(email=email, name=name, **kwargs)
