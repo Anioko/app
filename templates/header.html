@@ -36,13 +36,17 @@
               </span>
 
               {% if current_user.is_premium() %}
-                <small class="text-success d-block mt-1">Premium</small>
+                <small class="text-success d-block mt-1">Premium
+                {% if current_user.in_trial() %}
+                  (Trial ends {{ current_user.trial_until | dt }})
+                {% endif %}
+                </small>
               {% endif %}
 						</span>
           </a>
 
           <div class="dropdown-menu dropdown-menu-right dropdown-menu-arrow">
-            {% if current_user.is_premium() %}
+            {% if current_user.get_subscription() %}
               <a class="dropdown-item" href="{{ url_for('dashboard.billing') }}">
                 <i class="dropdown-icon fe fe-dollar-sign"></i> Billing
               </a>

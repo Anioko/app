@@ -142,20 +142,24 @@ class User(db.Model, ModelMixin, UserMixin):
         return user
 
     def should_upgrade(self):
-        return not self.is_premium()
+        """
+        user should upgrade if they don't have any active subscription,
+        meaning user is either
+        - free plan or
+        - in trial
+        """
+        sub: Subscription = self.get_subscription()
+        return not sub
 
     def is_premium(self):
-        """user is premium if they have a active subscription"""
+        """user is premium if they have a active subscription or in trial period"""
         sub: Subscription = self.get_subscription()
         if sub:
-            if sub.cancelled:
-                # user is premium until the next billing_date + 1
-                return sub.next_bill_date >= arrow.now().shift(days=-1).date()
-
-            # subscription active, ie not cancelled
             return True
-
-        return False
+        elif self.in_trial():
+            return True
+        else:
+            return False
 
     def can_create_new_alias(self):
         if self.is_premium():
@@ -209,19 +213,33 @@ class User(db.Model, ModelMixin, UserMixin):
         return "".join([n[0].upper() for n in names if n])
 
     def plan_name(self) -> str:
-        if self.is_premium():
-            sub = self.get_subscription()
-
+        sub = self.get_subscription()
+        if sub:
             if sub.plan == PlanEnum.monthly:
                 return "Monthly ($2.99/month)"
             else:
                 return "Yearly ($29.99/year)"
+        elif self.in_trial():
+            return "In Trial"
         else:
             return "Free Plan"
 
     def get_subscription(self):
+        """return *active* subscription
+        TODO: support user unsubscribe and re-subscribe
+        """
         sub = Subscription.get_by(user_id=self.id)
-        return sub
+        if sub and sub.cancelled:
+            # sub is active until the next billing_date + 1
+            if sub.next_bill_date >= arrow.now().shift(days=-1).date():
+                return sub
+            else:  # past subscription, user is considered not having a subscription
+                return None
+        else:
+            return sub
+
+    def in_trial(self):
+        return self.trial_until and self.trial_until > arrow.now()
 
     def verified_custom_domains(self):
         return CustomDomain.query.filter_by(user_id=self.id, verified=True).all()

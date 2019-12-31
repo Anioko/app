@@ -14,8 +14,8 @@ from app.dashboard.base import dashboard_bp
 @login_required
 def pricing():
     # sanity check: make sure this page is only for free user
-    if current_user.is_premium():
-        flash("You are already a premium user", "warning")
+    if current_user.get_subscription():
+        flash("You already have an active subscription", "warning")
         return redirect(url_for("dashboard.index"))
 
     return render_template(
